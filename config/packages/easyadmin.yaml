@@ -1,0 +1,3 @@
+# config/packages/easyadmin.yaml
+easy_admin:
+# no config needed here, it's handled by the controllers

@@ -1,0 +1,29 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block main %}
+    <div style="padding: 24px;">
+        <h2 style="margin-bottom: 16px;">BimmerTech Firmware Admin</h2>
+        <p style="color: #555; margin-bottom: 24px;">
+            Manage CarPlay / Android Auto MMI firmware versions. Changes take effect immediately for all customers.
+        </p>
+
+        <div
+            style="background: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <strong style="color: #d46b08;">⚠️ Important</strong><br>
+            Always double-check version strings and download links before saving.
+            An incorrect firmware link can permanently damage a customer's device.
+        </div>
+
+        <a href="{{ ea_url().setController('App\\Controller\\Admin\\SoftwareVersionCrudController') }}"
+           style="display:inline-block; background: #1CA3C2; color:#fff; padding: 10px 24px; border-radius:6px; text-decoration:none; font-size:15px;">
+            Manage Software Versions
+        </a>
+
+        <a href="/" target="_blank"
+           style="display:inline-block; margin-left:12px; background: #fff; color:#1CA3C2; border:1px solid #1CA3C2; padding: 10px 24px; border-radius:6px; text-decoration:none; font-size:15px;">
+            View Customer Page ↗
+        </a>
+    </div>
+{% endblock %}
