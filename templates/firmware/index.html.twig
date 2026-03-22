@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarPlay / Android Auto MMI Software Update | BimmerTech</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Rubik', 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #212121;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 16px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .section-title {
+            box-shadow: inset 2px 3px 5px #00000040, 2px 3px 5px #00000040;
+            border: 1px solid #fff;
+            border-radius: 20px;
+            padding: 24px;
+            background: #fff;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .section-title h1 {
+            font-size: 38px;
+            line-height: 46px;
+            font-weight: 300;
+            color: #212121;
+        }
+
+        .section-title h1 .bold {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .field {
+            margin-bottom: 16px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .field input:focus {
+            border-color: #1CA3C2;
+        }
+
+        .field input:disabled {
+            background: #f2f2f2;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .field .error-msg {
+            color: #d32f2f;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .field.has-error input {
+            border-color: #d32f2f;
+        }
+
+        .field.has-error .error-msg {
+            display: block;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .btn-check {
+            background: linear-gradient(180deg, #1CA3C2 0%, #246574 100%);
+            color: #fff;
+            border: none;
+            padding: 10px 36px;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: opacity 0.2s;
+        }
+
+        .btn-check:hover {
+            opacity: 0.9;
+        }
+
+        .btn-check:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .tooltip-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .tooltip-icon {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #aaa;
+            border-radius: 50%;
+            color: #aaa;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: help;
+            user-select: none;
+        }
+
+        .tooltip-box {
+            display: none;
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #333;
+            color: #fff;
+            font-size: 13px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            width: 240px;
+            z-index: 10;
+            line-height: 1.5;
+        }
+
+        .tooltip-wrap:hover .tooltip-box {
+            display: block;
+        }
+
+        /* Result alert */
+        .alert {
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 8px;
+            font-size: 15px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            color: #389e0d;
+            display: block;
+        }
+
+        .alert.error {
+            background: #fff2f0;
+            border: 1px solid #ffccc7;
+            color: #cf1322;
+            display: block;
+        }
+
+        .alert a {
+            color: #389e0d;
+            font-weight: 600;
+            text-decoration: underline;
+            text-transform: uppercase;
+            margin-left: 8px;
+            font-size: 15px;
+        }
+
+        /* Loading overlay */
+        .form-wrap {
+            position: relative;
+        }
+
+        .form-wrap.loading {
+            pointer-events: none;
+        }
+
+        .form-wrap.loading::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.75);
+            border-radius: 12px;
+            z-index: 5;
+        }
+
+        .form-wrap.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            margin: -20px 0 0 -20px;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-top-color: #1CA3C2;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            z-index: 6;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .software-help {
+            margin-top: 12px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .software-help a {
+            color: #1CA3C2;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .warning-box {
+            background: #fffbe6;
+            border: 1px solid #ffe58f;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-top: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #212121;
+        }
+
+        .warning-box strong {
+            color: #d46b08;
+        }
+
+        .footer-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        .btn-shop {
+            display: inline-block;
+            background: linear-gradient(180deg, #1CA3C2 0%, #246574 100%);
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 28px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .disclaimer {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.5;
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            max-width: 90vw;
+            max-height: 90vh;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .modal img {
+            display: block;
+            max-width: 100%;
+            max-height: 85vh;
+        }
+
+        @media (max-width: 480px) {
+            .section-title h1 {
+                font-size: 28px;
+                line-height: 36px;
+            }
+
+            .section-title h1 .bold {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="section-title">
+        <h1><span class="bold">Update the software for your</span><br>CarPlay / Android Auto MMI</h1>
+    </div>
+
+    <div class="card form-wrap" id="formWrap">
+        <div class="field" id="fieldVersion">
+            <label for="version">System Version *</label>
+            <input type="text" id="version" placeholder="Your software version*" autocomplete="off">
+            <div class="error-msg">This field is required</div>
+        </div>
+
+        <div class="field">
+            <label for="mcuVersion">MCU Version (not required)</label>
+            <input type="text" id="mcuVersion" placeholder="Not Required" disabled>
+        </div>
+
+        <div class="field" id="fieldHw">
+            <label for="hwVersion">HW Version *</label>
+            <input type="text" id="hwVersion" placeholder="Your HW version*" autocomplete="off">
+            <div class="error-msg">This field is required</div>
+        </div>
+
+        <div class="actions">
+            <button class="btn-check" id="checkBtn" onclick="checkSoftware()">Check</button>
+            <div class="tooltip-wrap">
+                <div class="tooltip-icon">i</div>
+                <div class="tooltip-box">Enter your current software version to check if there is an update available.
+                    You can find your current software in MMI settings &gt; System &gt; System/firmware version.
+                </div>
+            </div>
+        </div>
+
+        <div class="alert" id="resultAlert"></div>
+
+        <div class="software-help">
+            <a onclick="document.getElementById('softwareModal').classList.add('open')">What is my current software?</a>
+        </div>
+
+        <div class="warning-box">
+            <strong>Warning!!!</strong><br>
+            Entering an incorrect software number and uploading it to another version of MMI will brick the MMI.<br>
+            In most cases, this is a reversible process, but impossible to perform without the assistance of our
+            support.<br>
+            BimmerTech is not responsible for errors in software uploading by customers due to uploading the incorrect
+            version.<br>
+            After this step, replacement under warranty cannot be considered.
+        </div>
+    </div>
+
+    <div class="footer-card">
+        <a class="btn-shop" href="https://bimmer-tech.net/" target="_blank">Go back to the shop</a>
+        <p class="disclaimer">
+            BMW and MINI are registered trademarks of Bayerische Motoren Werke AG. BimmerTech is not affiliated with BMW
+            AG in any way, and is not authorized by BMW AG to act as an official distributor or representative.
+        </p>
+    </div>
+
+</div>
+
+<!-- "What is my current software?" modal -->
+<div class="modal-backdrop" id="softwareModal" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal">
+        <button class="modal-close" onclick="document.getElementById('softwareModal').classList.remove('open')">✕
+        </button>
+        <img src="/img/mmi_software_version.jpg" alt="How to find your MMI software version"
+             onerror="this.style.display='none'">
+        <p style="padding:24px;color:#555;font-size:14px;">Go to MMI Settings → System → System/firmware version to find
+            your software version number.</p>
+    </div>
+</div>
+
+<script>
+    async function checkSoftware() {
+        const versionEl = document.getElementById('version');
+        const hwEl = document.getElementById('hwVersion');
+        const mcuEl = document.getElementById('mcuVersion');
+        const fieldVer = document.getElementById('fieldVersion');
+        const fieldHw = document.getElementById('fieldHw');
+        const alert = document.getElementById('resultAlert');
+        const formWrap = document.getElementById('formWrap');
+        const btn = document.getElementById('checkBtn');
+
+        // Reset
+        fieldVer.classList.remove('has-error');
+        fieldHw.classList.remove('has-error');
+        alert.className = 'alert';
+        alert.innerHTML = '';
+
+        let valid = true;
+        if (!versionEl.value.trim()) {
+            fieldVer.classList.add('has-error');
+            valid = false;
+        }
+        if (!hwEl.value.trim()) {
+            fieldHw.classList.add('has-error');
+            valid = false;
+        }
+        if (!valid) return;
+
+        formWrap.classList.add('loading');
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/carplay/software/version', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    version: versionEl.value.trim(),
+                    mcuVersion: mcuEl.value.trim(),
+                    hwVersion: hwEl.value.trim(),
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.versionExist) {
+                let html = data.msg;
+                if (data.st) html += ` <a href="${data.st}" target="_blank">ST Version</a>`;
+                if (data.gd) html += ` <a href="${data.gd}" target="_blank">GD Version</a>`;
+                alert.className = 'alert success';
+                alert.innerHTML = html;
+            } else {
+                alert.className = 'alert error';
+                alert.textContent = data.msg || 'Something went wrong. Please try again.';
+            }
+        } catch (e) {
+            alert.className = 'alert error';
+            alert.textContent = 'Failed to fetch software details. Please try again.';
+        } finally {
+            formWrap.classList.remove('loading');
+            btn.disabled = false;
+        }
+    }
+
+    // Allow Enter key to submit
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') checkSoftware();
+    });
+</script>
+
+</body>
+</html>
+<?php

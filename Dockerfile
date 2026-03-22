@@ -21,7 +21,7 @@ VOLUME /app/var/
 # hadolint ignore=DL3008
 RUN <<-EOF
 	apt-get update
-	apt-get install -y --no-install-recommends \
+	apt-get install -y --no-install-recommends --no-install-suggests \
 		file \
 		git
 	install-php-extensions \
@@ -29,7 +29,8 @@ RUN <<-EOF
 		apcu \
 		intl \
 		opcache \
-		zip
+		zip \
+		pdo_mysql
 	rm -rf /var/lib/apt/lists/*
 EOF
 
@@ -39,6 +40,9 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
 
 ###> recipes ###
+###> doctrine/doctrine-bundle ###
+# RUN install-php-extensions pdo_pgsql
+###< doctrine/doctrine-bundle ###
 ###< recipes ###
 
 COPY --link frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
