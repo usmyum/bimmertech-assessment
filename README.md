@@ -1,135 +1,192 @@
 # BimmerTech Firmware Manager
 
-CarPlay / Android Auto MMI software update portal with an admin panel for managing firmware versions — built with Symfony 7.1, Doctrine, EasyAdmin 4, and MySQL 8.
+A Symfony 8 application for managing and serving CarPlay / Android Auto MMI firmware download links. Customers enter their device's software and hardware version to receive the correct firmware update link. Staff manage firmware versions through an EasyAdmin panel — no code changes required when new firmware is released.
 
 ---
 
-## Requirements
+## Tech Stack
 
-- Docker + Docker Compose
-- No other local dependencies needed — everything runs inside containers
+| Technology | Version | Why |
+|---|---|---|
+| **PHP** | 8.5+ | Required by Symfony 8 |
+| **Symfony** | 8.0 | Application framework — routing, controllers, templating |
+| **Doctrine ORM** | 3.6 | Database abstraction — maps PHP objects to MySQL tables |
+| **Doctrine Migrations** | 4.0 | Tracks and runs schema changes safely |
+| **EasyAdmin** | 5.0 | Auto-generates the admin CRUD panel from entity definitions |
+| **MySQL** | 8.3 | Stores all firmware version records |
+| **Caddy** | (via Docker) | Web server — bundled in the Symfony Docker skeleton |
+| **Docker Compose** | — | Runs PHP + MySQL + Caddy as a single stack locally |
 
 ---
 
-## Setup
+## Project Structure
 
-### 1. Start Docker
+```
+src/
+├── Controller/
+│   ├── FirmwareController.php              # Customer page (GET /) + API (POST /api/...)
+│   └── Admin/
+│       ├── DashboardController.php         # EasyAdmin dashboard at /admin
+│       └── SoftwareVersionCrudController.php  # CRUD for firmware versions
+├── Entity/
+│   └── SoftwareVersion.php                 # Doctrine entity — maps to software_version table
+└── Repository/
+    └── SoftwareVersionRepository.php       # Custom DB queries
 
-```bash
-docker compose up -d --build
+templates/
+├── firmware/
+│   └── index.html.twig                     # Customer-facing download page
+└── admin/
+    └── dashboard.html.twig                 # Admin dashboard homepage
+
+migrations/
+└── Version20240101000000.php               # Creates the software_version table
+
+seed.sql                                    # Populates the DB with all existing firmware versions
+docker-compose.yml                          # Docker stack definition
 ```
 
-### 2. Install dependencies
+---
+
+## Quick Start
+
+### 1. Clone and start Docker
+
+```bash
+docker compose up -d
+```
+
+### 2. Install PHP dependencies
 
 ```bash
 docker compose exec php composer install
 ```
 
-### 3. Check your database URL
-
-Make sure your `.env` file contains:
-
-```env
-DATABASE_URL="mysql://root:root@database:3306/app?serverVersion=8.3&charset=utf8mb4"
-```
-
-### 4. Run the migration
+### 3. Run the database migration
 
 ```bash
 docker compose exec php php bin/console doctrine:migrations:migrate
 ```
 
-Type `yes` when prompted.
+Type `yes` when prompted. This creates the `software_version` table.
 
-### 5. Load all firmware versions
+### 4. Seed the database
 
 ```bash
 docker compose exec -T database mysql -u root -proot app < seed.sql
 ```
 
-### 6. Clear the cache
+### 5. Clear cache
 
 ```bash
 docker compose exec php php bin/console cache:clear
 ```
 
-That's it. The app is running with all existing firmware versions loaded.
+### 6. Open in browser
+
+```
+https://localhost        → Customer download page
+https://localhost/admin  → Admin panel
+```
 
 ---
 
-## URLs
+## Configuration
 
-| Page | URL |
-|---|---|
-| Customer download page | `http://localhost/` |
-| Admin panel | `http://localhost/admin` |
-| API endpoint (POST) | `http://localhost/api/carplay/software/version` |
+### Changing ports
 
----
+Open `docker-compose.yml` and edit the `ports` section under the `php` service:
 
-<<<<<<< HEAD
-## Important:
+```yaml
+ports:
+  - "80:80"     # Change left side — e.g. "8080:80" to use https://localhost:8080
+```
 
-You could see a screen saying "your connection is not private" in the browser. You simply can click "Advanced" and then "Proceed to localhost (unsafe)" to bypass this for your local.
+And under the `database` service:
 
-=======
->>>>>>> 963ba65 (Featre: BimmerTech firmware manager)
-## Admin Panel
+```yaml
+ports:
+  - "3307:3306" # Change left side — e.g. "3308:3306"
+```
 
-Go to `http://localhost/admin` to manage firmware versions. From there you can:
+Then restart:
 
-- View all firmware versions in a searchable, filterable table
-- Add new firmware versions
-- Edit existing versions and download links
-- Mark a version as the latest (customers will be told they are up to date — no download link shown)
-- Delete old versions
+```bash
+docker compose down && docker compose up -d
+```
 
-> ⚠️ **Changes take effect immediately for all customers. There is no confirmation step. Always double-check version strings and download links before saving — incorrect firmware can permanently damage a customer's device.**
+### Changing database credentials
 
----
+Edit the `database` service in `docker-compose.yml`:
 
-## Adding a New Firmware Version
+```yaml
+database:
+  environment:
+    MYSQL_ROOT_PASSWORD: root      # ← change this
+    MYSQL_DATABASE: app            # ← change this
+```
 
-1. Go to `http://localhost/admin` and click **Software Versions** in the left menu
-2. Click **Add New Version** in the top right
-3. Fill in all the fields (see Field Reference below)
-4. If this is the **latest** version (customers are already up to date), toggle **Is Latest?** on and leave all download links empty
-5. Click **Save** — the change is live immediately
+And update `DATABASE_URL` under the `php` service to match:
 
-### When a new firmware release comes out
+```yaml
+php:
+  environment:
+    DATABASE_URL: "mysql://root:root@database:3306/app?serverVersion=8.3&charset=utf8mb4"
+#                         ^^^^  ^^^^              ^^^
+#                         user  pass              db name
+```
 
-You need to do two things:
+Alternatively, set `DATABASE_URL` in your `.env.local` file (overrides everything else):
 
-1. Find the version currently marked **Is Latest = Yes** and edit it. Uncheck **Is Latest?** and add the download links for that version (since it is now an older version customers may need to update from)
-2. Add the new version with **Is Latest?** checked and all download links empty
+```env
+DATABASE_URL="mysql://root:yournewpassword@database:3306/app?serverVersion=8.3&charset=utf8mb4"
+```
 
----
+### Switching HTTP / HTTPS
 
-## Field Reference
+The app uses Caddy as the web server. To force plain HTTP, set `SERVER_NAME` in `docker-compose.yml`:
 
-| Field | Required | Example | Notes |
-|---|---|---|---|
-| Product Name | ✅ | `MMI Prime CIC` | Must start with `LCI ` for LCI hardware variants |
-| Full Version String | ✅ | `v3.3.7.mmipri.c` | Include the leading `v` |
-| Customer Version String | ✅ | `3.3.7.mmipri.c` | Same as above but WITHOUT the leading `v` — this is what customers type in |
-| Is Latest? | ✅ | On / Off | Only one version per product should be marked latest at a time |
-| General Download Link | ➖ | Google Drive URL | Full firmware package link. Leave empty for LCI versions and latest versions |
-| ST Hardware Link | ➖ | Google Drive URL | Download link for ST (standard/CIC) hardware |
-| GD Hardware Link | ➖ | Google Drive URL | Download link for GD (NBT/EVO) hardware |
+```yaml
+php:
+  environment:
+    SERVER_NAME: "localhost:80"
+    DEFAULT_URI: https://localhost
+```
+
+To enable HTTPS for a real domain (Caddy auto-provisions Let's Encrypt certificates):
+
+```yaml
+php:
+  environment:
+    SERVER_NAME: "yourdomain.com"
+```
+
+### Changing the app environment
+
+In `.env`:
+
+```env
+APP_ENV=dev     # dev = debug toolbar, detailed errors
+APP_ENV=prod    # prod = cached, no debug output
+```
+
+After switching to `prod`:
+
+```bash
+docker compose exec php php bin/console cache:clear
+```
 
 ---
 
 ## Database Access
 
-The database runs inside Docker on port `3307` on your host machine.
-
-### Via terminal
+### Terminal
 
 ```bash
 docker compose exec database mysql -u root -proot app
 ```
 
-### Via a GUI tool (TablePlus, DBeaver, etc.)
+### GUI tool (TablePlus, DBeaver, DataGrip, etc.)
 
 ```
 Host:      127.0.0.1
@@ -139,27 +196,80 @@ Password:  root
 Database:  app
 ```
 
-### To re-run the seed file
+---
 
-```bash
-docker compose exec -T database mysql -u root -proot app < seed.sql
-```
+## Admin Panel
+
+Go to `https://localhost/admin` to manage firmware versions.
+
+**To add a new firmware version:**
+
+1. Click **Software Versions → Add New Version**
+2. Fill in the fields (see table below)
+3. Click **Save** — live immediately
+
+**When a new firmware release comes out:**
+
+1. Find the version currently marked **Is Latest = Yes**, edit it, uncheck **Is Latest**, and add its download links
+2. Add the new version with **Is Latest** checked and download links empty
+
+> ⚠️ Changes are live immediately. Incorrect firmware links can permanently damage a customer's device.
+
+### Field Reference
+
+| Field | Required | Example | Notes |
+|---|---|---|---|
+| Product Name | ✅ | `MMI Prime CIC` | Must start with `LCI ` for LCI hardware variants |
+| Full Version String | ✅ | `v3.3.7.mmipri.c` | With leading `v` |
+| Customer Version String | ✅ | `3.3.7.mmipri.c` | Without leading `v` — what customers type in |
+| Is Latest? | ✅ | On/Off | Mark only one version per product as latest |
+| General Download Link | ➖ | Google Drive URL | Full package link, empty for LCI and latest versions |
+| ST Hardware Link | ➖ | Google Drive URL | For ST/CIC hardware |
+| GD Hardware Link | ➖ | Google Drive URL | For GD/NBT/EVO hardware |
 
 ---
 
-## How It Works
+## API
 
-When a customer submits their versions, the app:
+The customer page calls this endpoint internally.
 
-1. Strips any leading `v` or `V` from the System Version input
-2. Analyses the **HW Version** using regex patterns to determine hardware type — if it doesn't match any known pattern, an error is returned
-3. Looks up the System Version in the database (case-insensitive)
-4. Filters results: standard hardware only matches standard product entries; LCI hardware only matches entries whose Product Name starts with `LCI`, further filtered by CIC / NBT / EVO
-5. Returns the correct download link for the customer's hardware type, or tells them they are already up to date
+```
+POST /api/carplay/software/version
+Content-Type: application/x-www-form-urlencoded
+
+version=3.3.6.mmipri.c&hwVersion=CPAA_2022.01.01
+```
+
+**Response — update available:**
+```json
+{
+  "versionExist": true,
+  "msg": "The latest version of software is v3.3.7 ",
+  "link": "https://drive.google.com/...",
+  "st": "https://drive.google.com/...",
+  "gd": ""
+}
+```
+
+**Response — already up to date:**
+```json
+{
+  "versionExist": true,
+  "msg": "Your system is upto date!",
+  "link": "", "st": "", "gd": ""
+}
+```
+
+**Response — unrecognised hardware:**
+```json
+{
+  "msg": "There was a problem identifying your software. Contact us for help."
+}
+```
 
 ### Hardware version patterns
 
-| Pattern | Hardware type | Link shown |
+| HW Version pattern | Hardware type | Link returned |
 |---|---|---|
 | `CPAA_YYYY.MM.DD` | Standard ST | ST link |
 | `CPAA_G_YYYY.MM.DD` | Standard GD | GD link |
@@ -169,28 +279,30 @@ When a customer submits their versions, the app:
 
 ---
 
-## Project Structure
+## Useful Commands
 
-```
-src/
-├── Controller/
-│   ├── FirmwareController.php         # Customer page + API endpoint
-│   └── Admin/
-│       ├── DashboardController.php    # EasyAdmin dashboard
-│       └── SoftwareVersionCrudController.php  # Firmware version CRUD
-├── Entity/
-│   └── SoftwareVersion.php            # Doctrine entity
-└── Repository/
-    └── SoftwareVersionRepository.php  # DB queries
+```bash
+# Start the stack
+docker compose up -d
 
-templates/
-├── firmware/
-│   └── index.html.twig                # Customer download page
-└── admin/
-    └── dashboard.html.twig            # Admin dashboard
+# Stop the stack
+docker compose down
 
-migrations/
-└── Version20240101000000.php          # Creates software_version table
+# Restart just PHP (after code changes)
+docker compose restart php
 
-seed.sql                               # All existing firmware versions
+# Run a migration
+docker compose exec php php bin/console doctrine:migrations:migrate
+
+# Generate a new migration after entity changes
+docker compose exec php php bin/console doctrine:migrations:diff
+
+# Clear cache
+docker compose exec php php bin/console cache:clear
+
+# List all routes
+docker compose exec php php bin/console debug:router
+
+# Open a shell inside the PHP container
+docker compose exec php bash
 ```

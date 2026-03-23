@@ -55,7 +55,8 @@ class SoftwareVersionCrudController extends AbstractCrudController
 
         yield BooleanField::new('latest', 'Is Latest Version?')
             ->setHelp('Tick this if this version is already the latest. The customer will be told their system is up to date and no download link will be shown. Only ONE version per product should be marked latest.')
-            ->renderAsSwitch(true);
+            ->renderAsSwitch(true)
+            ->setFormTypeOption('attr', ['data-ea-widget' => 'ea-autocomplete']);
 
         yield UrlField::new('link', 'General Download Link')
             ->setHelp('Google Drive folder link for full firmware package. Leave empty for LCI versions.')
@@ -74,7 +75,6 @@ class SoftwareVersionCrudController extends AbstractCrudController
 
         // Compact summary columns for the list view
         if ($pageName === Crud::PAGE_INDEX) {
-            yield BooleanField::new('latest', 'Latest')->renderAsSwitch(false);
             yield TextField::new('st', 'ST Link')->formatValue(fn($v) => $v ? '✔' : '—');
             yield TextField::new('gd', 'GD Link')->formatValue(fn($v) => $v ? '✔' : '—');
         }
