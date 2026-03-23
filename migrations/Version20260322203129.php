@@ -19,15 +19,19 @@ final class Version20260322203129 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $table = $schema->createTable('software_version');
+        $table = $schema->createTable('software_versions');
+
         $table->addColumn('id', 'integer', ['autoincrement' => true]);
-        $table->addColumn('name', 'string', ['length' => 100]);
+        $table->addColumn('name', 'string', ['length' => 150]);
         $table->addColumn('system_version', 'string', ['length' => 100]);
         $table->addColumn('system_version_alt', 'string', ['length' => 100]);
-        $table->addColumn('link', 'string', ['length' => 500, 'notnull' => false]);
-        $table->addColumn('st', 'string', ['length' => 500, 'notnull' => false]);
-        $table->addColumn('gd', 'string', ['length' => 500, 'notnull' => false]);
+        $table->addColumn('link', 'text');
+        $table->addColumn('st', 'text', ['notnull' => false]);
+        $table->addColumn('gd', 'text', ['notnull' => false]);
         $table->addColumn('latest', 'boolean', ['default' => false]);
+        $table->setPrimaryKey(['id']);
+
+        $table->addIndex(['system_version_alt'], 'idx_version_alt');
     }
 
     public function down(Schema $schema): void

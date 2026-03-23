@@ -16,7 +16,7 @@ CarPlay / Android Auto MMI software update portal with an admin panel for managi
 ### 1. Start Docker
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 ### 2. Install dependencies
@@ -66,6 +66,10 @@ That's it. The app is running with all existing firmware versions loaded.
 | API endpoint (POST) | `http://localhost/api/carplay/software/version` |
 
 ---
+
+## Important:
+
+You could see a screen saying "your connection is not private" in the browser. You simply can click "Advanced" and then "Proceed to localhost (unsafe)" to bypass this for your local.
 
 ## Admin Panel
 

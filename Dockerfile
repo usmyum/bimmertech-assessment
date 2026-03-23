@@ -21,7 +21,7 @@ VOLUME /app/var/
 # hadolint ignore=DL3008
 RUN <<-EOF
 	apt-get update
-	apt-get install -y --no-install-recommends \
+	apt-get install -y --no-install-recommends --no-install-suggests \
 		file \
 		git
 	install-php-extensions \
@@ -41,7 +41,7 @@ ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
 
 ###> recipes ###
 ###> doctrine/doctrine-bundle ###
-RUN install-php-extensions pdo_pgsql
+# RUN install-php-extensions pdo_pgsql
 ###< doctrine/doctrine-bundle ###
 ###< recipes ###
 
